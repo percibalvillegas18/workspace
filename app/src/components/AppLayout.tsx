@@ -37,6 +37,7 @@ const NavLink = ({ to, children, ...rest }: any) => {
     '/scheduling': () => import('../modules/scheduling/SchedulingModule'),
     '/notifications': () => import('../modules/notifications/NotificationsModule'),
     '/audit': () => import('../modules/audit/AuditModule'),
+    '/roles': () => import('../modules/admin/RoleMatrixPage'),
     '/admin': () => import('../modules/admin/AdminModule'),
   };
 
@@ -84,6 +85,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { key: '/notifications', icon: <BellOutlined />, label: <NavLink to="/notifications">{t('notifications')}</NavLink> },
     { key: '/audit', icon: <AuditOutlined />, label: <NavLink to="/audit">{t('audit')}</NavLink> },
     { key: '/observability', icon: <HeartOutlined />, label: <NavLink to="/observability">{t('observability')}</NavLink> },
+    { key: '/roles', icon: <SafetyCertificateOutlined />, label: <NavLink to="/roles">Roles & Matrix</NavLink> },
     { key: '/admin', icon: <SettingOutlined />, label: <NavLink to="/admin">{t('admin')}</NavLink> },
   ];
 
