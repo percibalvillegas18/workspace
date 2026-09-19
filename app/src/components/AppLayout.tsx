@@ -38,6 +38,7 @@ const NavLink = ({ to, children, ...rest }: any) => {
     '/notifications': () => import('../modules/notifications/NotificationsModule'),
     '/audit': () => import('../modules/audit/AuditModule'),
     '/roles': () => import('../modules/admin/RoleMatrixPage'),
+    '/contracts': () => import('../modules/contracts/ContractsPage'),
     '/admin': () => import('../modules/admin/AdminModule'),
   };
 
@@ -77,6 +78,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: <NavLink to="/">{t('dashboard')}</NavLink> },
     { key: '/workforce', icon: <TeamOutlined />, label: <NavLink to="/workforce">{t('workforce')}</NavLink> },
+    { key: '/contracts', icon: <FileProtectOutlined />, label: <NavLink to="/contracts">Contracts (Job No from Contract)</NavLink> },
     { key: '/units', icon: <ApartmentOutlined />, label: <NavLink to="/units">{t('units')}</NavLink> },
     { key: '/positions', icon: <IdcardOutlined />, label: <NavLink to="/positions">{t('positions')}</NavLink> },
     { key: '/credentials', icon: <SafetyCertificateOutlined />, label: <NavLink to="/credentials">{t('credentials')}</NavLink> },
