@@ -17,6 +17,7 @@ const AuditModule = lazy(() => import('./modules/audit/AuditModule'));
 const ObservabilityPage = lazy(() => import('./modules/observability/ObservabilityPage'));
 const AdminModule = lazy(() => import('./modules/admin/AdminModule'));
 const RoleMatrixPage = lazy(() => import('./modules/admin/RoleMatrixPage'));
+const ContractsPage = lazy(() => import('./modules/contracts/ContractsPage'));
 const LoginPage = lazy(() => import('./modules/auth/LoginPage'));
 
 function lazyRoute(Component: React.LazyExoticComponent<any>) {
@@ -53,6 +54,7 @@ export default function App() {
         <Route path="/observability" element={<ProtectedRoute>{lazyRoute(ObservabilityPage)}</ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute>{lazyRoute(AdminModule)}</ProtectedRoute>} />
         <Route path="/roles" element={<ProtectedRoute>{lazyRoute(RoleMatrixPage)}</ProtectedRoute>} />
+        <Route path="/contracts" element={<ProtectedRoute>{lazyRoute(ContractsPage)}</ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

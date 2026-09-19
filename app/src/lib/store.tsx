@@ -4,8 +4,20 @@ import { DEPARTMENTS, NURSING_UNITS, POSITIONS, CREDENTIAL_TEMPLATES, CREDENTIAL
 
 export type Employee = {
   id: number;
-  name: string;
-  jobNumber: string;
+  name: string; // Full Name = First Name + Middle Name + Last Name (auto)
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  jobNumber: string; // Job Number from contract — unique, plain numbers or text+number combination, no AIGH- format
+  jobTitle?: string; // Job Title
+  fileNo?: string; // File No.
+  rankGrade?: string; // Rank/Grade
+  nationality?: string; // Nationality
+  jobPostLocation?: string; // Job Post (Location Assignment) - City +
+  actualWorkPlace?: string; // Actual Work Place
+  specialty?: string; // Specialty
+  maritalStatus?: 'Single' | 'Married' | 'Others'; // Marital Status
+  salary?: number; // Salary Amount in SAR
   unitId: number;
   position: string;
   contactEmail: string;
@@ -353,23 +365,74 @@ export const useStore = create<Store>()(
         // bulletproof check: position must be active
         const pos = state.positions.find(p => p.code === emp.position);
         if (!pos || !pos.isActive) throw new Error(`POSITION_NOT_ACTIVE: ${emp.position}`);
-        // job number unique
-        if (state.employees.find(e => e.jobNumber === emp.jobNumber && !e.deletedAt)) throw new Error('Duplicate job number');
+        // job number unique — from contract to be entered, plain numbers or text+number combination allowed, no AIGH- format
+        // Spec §3.1: HR enters unique Job Number + contract terms, fn_onboard_employee_with_contract creates both atomically
+        // Duplicate job number triggers full rollback via DB unique constraint
+        if (!emp.jobNumber || String(emp.jobNumber).trim().length === 0) throw new Error('Job Number is required — from contract to be entered');
+        if (state.employees.find(e => String(e.jobNumber).toLowerCase() === String(emp.jobNumber).toLowerCase() && !e.deletedAt)) throw new Error(`Duplicate job number — job number is from contract and must be unique: ${emp.jobNumber}`);
         // unit exists
         const unit = state.units.find(u => u.id === emp.unitId && u.isActive);
         if (!unit) throw new Error('Invalid unit');
 
+        // Validate contract dates — start/end inclusive, next non-overlapping renewal starts after previous end
+        const start = new Date(emp.contractStart);
+        const end = new Date(emp.contractEnd);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) throw new Error('Invalid contract dates');
+        if (end <= start) throw new Error('Contract end must be after start — inclusive dates');
+
+        // First Name, Middle Name, Last Name → Full Name auto = First + Middle + Last
+        const firstName = (emp as any).firstName?.trim() || '';
+        const middleName = (emp as any).middleName?.trim() || '';
+        const lastName = (emp as any).lastName?.trim() || '';
+        if (!firstName) throw new Error('First Name is required');
+        if (!lastName) throw new Error('Last Name is required');
+        const fullName = [firstName, middleName, lastName].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+        // Additional fields after Job Number in order: Job Title, File No., Rank/Grade, Nationality, Job Post (City), Actual Work Place, Specialty, Contract Start/End Hijri, Marital Status, Salary SAR
+        const jobTitle = (emp as any).jobTitle?.trim() || '';
+        const fileNo = (emp as any).fileNo?.trim() || '';
+        const rankGrade = (emp as any).rankGrade?.trim() || '';
+        const nationality = (emp as any).nationality?.trim() || '';
+        const jobPostLocation = (emp as any).jobPostLocation?.trim() || '';
+        const actualWorkPlace = (emp as any).actualWorkPlace?.trim() || '';
+        const specialty = (emp as any).specialty?.trim() || '';
+        const maritalStatus = (emp as any).maritalStatus || undefined;
+        const salary = (emp as any).salary ? Number((emp as any).salary) : undefined;
+
+        if (salary !== undefined && (isNaN(salary) || salary < 0)) throw new Error('Salary must be positive number in SAR');
+
         const newId = Math.max(0, ...state.employees.map(e => e.id)) + 1;
-        const newEmployee: Employee = { id: newId, name: emp.name, jobNumber: emp.jobNumber, unitId: emp.unitId, position: emp.position, contactEmail: emp.contactEmail, status: 'Active', hireDate: new Date().toISOString().split('T')[0] };
+        const newEmployee: Employee = {
+          id: newId,
+          firstName,
+          middleName: middleName || undefined,
+          lastName,
+          name: fullName,
+          jobNumber: String(emp.jobNumber).trim(),
+          jobTitle: jobTitle || undefined,
+          fileNo: fileNo || undefined,
+          rankGrade: rankGrade || undefined,
+          nationality: nationality || undefined,
+          jobPostLocation: jobPostLocation || undefined,
+          actualWorkPlace: actualWorkPlace || undefined,
+          specialty: specialty || undefined,
+          maritalStatus: maritalStatus as any,
+          salary,
+          unitId: emp.unitId,
+          position: emp.position,
+          contactEmail: emp.contactEmail,
+          status: 'Active',
+          hireDate: new Date().toISOString().split('T')[0]
+        };
         const newContract: Contract = { id: Math.max(0, ...state.contracts.map(c => c.id)) + 1, employeeId: newId, startDate: emp.contractStart, endDate: emp.contractEnd, status: 'Approved' };
 
-        // atomic transaction simulation
+        // atomic transaction simulation — fn_onboard_employee_with_contract creates employee + approved contract + audit entry in one block
         set((s) => ({
           employees: [...s.employees, newEmployee],
           contracts: [...s.contracts, newContract],
         }));
 
-        get().addAuditEntry({ actorId: state.currentUser?.id || 1, action: 'EMPLOYEE_ONBOARDED', resource: 'employees', resourceId: String(newId), changes: { job_number: emp.jobNumber } });
+        get().addAuditEntry({ actorId: state.currentUser?.id || 1, action: 'EMPLOYEE_ONBOARDED', resource: 'employees', resourceId: String(newId), changes: { job_number: newEmployee.jobNumber, first_name: firstName, middle_name: middleName, last_name: lastName, full_name: fullName, job_title: jobTitle, file_no: fileNo, rank_grade: rankGrade, nationality, job_post_location: jobPostLocation, actual_work_place: actualWorkPlace, specialty, marital_status: maritalStatus, salary, contract_start: emp.contractStart, contract_end: emp.contractEnd, note: 'Job number plain format, no AIGH- prefix, from contract. Full Name auto = First + Middle + Last' } });
         get().refreshEligibility(newId);
         return newId;
       },

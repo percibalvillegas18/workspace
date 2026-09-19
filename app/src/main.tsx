@@ -1,8 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './lib/i18n';
 import { setLanguage } from './lib/i18n';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5min
+      retry: 1,
+    },
+  },
+});
 
 // Residency check — fail-closed KSA (B-25)
 // me-south-1 is Bahrain — removed from KSA allowlist. Empty allowlist, polluted allowlist, unknown region, sandbox markers all refuse to boot.
@@ -44,6 +54,8 @@ setLanguage(savedLang);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   </React.StrictMode>,
 );
